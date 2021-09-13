@@ -58,7 +58,7 @@ def write_individual_timesheet(workbook, name, df):
         c = x + 2
         sum_range_start = get_cell(c, 3)
         sum_range_end = get_cell(c, r - 1)
-        worksheet[get_cell(c, r)] = f"=SUM({sum_range_start}:{sum_range_end}"
+        worksheet[get_cell(c, r)] = f"=SUM({sum_range_start}:{sum_range_end})"
 
     # write "grand total" underneath other totals
     r = r + 1
