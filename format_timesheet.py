@@ -19,8 +19,8 @@ def get_grouped_dfs(input_file):
     df_raw = pd.read_csv(input_file)
 
     # strip unnecessary columns
-    df_clean = df_raw.loc[:, 'Day':'Full Name']
-    df_clean["Worked Hours"] = df_raw['Worked Hours'].map(fmt_time)
+    df_clean = df_raw.loc[:, 'Date':'Full Name']
+    df_clean["Hours Worked"] = df_raw['Hours Worked'].map(fmt_time)
 
     # split by employee and format xlsx fragment for each person
     dfdict_group = {x: y.drop("Full Name", axis=1)
