@@ -33,6 +33,7 @@ def format_timesheet():
         f = request.files['file']
 
         # if user doesn't select a file, browser submits empty unamed file
+        # TODO: currently returns 500 Server Error rather than expected flash/redirect
         if f.filename == '':
             # TODO: replace with error response
             flash('No selected file')
@@ -44,6 +45,10 @@ def format_timesheet():
 
             try:
                 fmt_f = get_formatted_timesheet(f)
+                # TODO: I don't really want to store the file on disk,
+                # I'd much rather return it directly from memory...
+                # TODO: while I *AM* storing it, HANDLE DELETE FILE
+                # (currently only cleaned up when dyno sleeps & wipes the server)
                 fmt_f.save(os.path.join(
                     app.config['UPLOAD_FOLDER'], "output.xlsx"))
                 return redirect(url_for('download_file', name='output.xlsx'))
@@ -68,6 +73,7 @@ def download_file(name):
 
 
 # base endpoint, can be used to wake up a heroku dyno
+# TODO: while I'm using Flask views, root should not return JSON
 @app.route("/")
 def hello_world():
     return json.jsonify(message="wakeup complete")
