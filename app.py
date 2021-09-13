@@ -1,13 +1,14 @@
 import os
 from flask import Flask, json, request, flash, redirect, url_for, send_from_directory
 from werkzeug.utils import secure_filename
-
+from format_timesheet import get_formatted_timesheet
 
 ALLOWED_EXTENSIONS = {'csv'}
 UPLOAD_FOLDER = './www'
 
 # create www folder
-os.mkdir('./www')
+if not os.path.isdir('./www'):
+    os.mkdir('./www')
 
 
 app = Flask(__name__)
@@ -38,9 +39,17 @@ def format_timesheet():
             return redirect(request.url)
 
         if f and is_allowed_file(f.filename):
+            # currently NOT USING filename, although I might want to change that
             filename = secure_filename(f.filename)
-            f.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
-            return redirect(url_for('download_file', name=filename))
+
+            try:
+                fmt_f = get_formatted_timesheet(f)
+                fmt_f.save(os.path.join(
+                    app.config['UPLOAD_FOLDER'], "output.xlsx"))
+                return redirect(url_for('download_file', name='output.xlsx'))
+            except:
+                flash("Error formatting file!")
+                return redirect(request.url)
 
     return '''
     <!doctype html>
