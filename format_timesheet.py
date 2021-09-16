@@ -62,14 +62,16 @@ def write_individual_timesheet(workbook, name, raw_df):
     worksheet = workbook.create_sheet(name)
     worksheet[get_cell(0, 1)] = name # First row is just employee name
 
-    df = get_truncated_df(raw_df, "Hours Worked") # grabs everything though Hours Worked
+    # grab everything up to x column
+    df = get_truncated_df(raw_df, "Break Type")
+
+    # add formatted timesheet column
+    df["Hours incl break"] = df['Hours Worked'].map(fmt_time)
 
     # write contents of dataframe, including headers
     for r in dataframe_to_rows(df, index=False, header=True):
         worksheet.append(r)
 
-    # TODO: add formatted hrs worked
-    
     add_headers_to_worksheet(worksheet, 2, len(df.columns), ["REG", "OT", "SICK", "PTO", "HOLIDAY"])
 
     # write formulae for totals under df
