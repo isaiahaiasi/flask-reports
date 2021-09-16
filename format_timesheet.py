@@ -3,18 +3,24 @@ import pandas as pd
 from openpyxl import Workbook
 from openpyxl.utils.dataframe import dataframe_to_rows
 
+# * Helpers
+def get_cell(col, row):
+    alpha = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+    col_alpha = alpha[col % len(alpha)]
+    # TODO: handle columns > Z
+    return f"{col_alpha}{row}"
 
-# * CSV -> DATAFRAME fns
 def fmt_time(t_raw):
     try:
-        numeric_str = re.sub(r'h|m', '', t_raw)
-        str_h, str_m = numeric_str.split(" ")
-        h, m = float(str_h), float(str_m)
-        return ((h * 60) + m)/60
+        numeric_str = re.sub(r'h|m', '', t_raw)     # '3h 15m' -> '3 15'
+        str_h, str_m = numeric_str.split(" ")       # '3 15' -> ('3', '15')
+        h, m = float(str_h), float(str_m)           # ('3', '15') -> (3.0, 15.0)
+        return ((h * 60) + m)/60                    # (3.0, 15.0) -> 3.25
     except:
         return None
 
 
+# * CSV -> DATAFRAME fns
 def get_grouped_dfs(input_file):
     df_raw = pd.read_csv(input_file)
 
@@ -30,19 +36,26 @@ def get_grouped_dfs(input_file):
 
 
 # * dict<DATAFRAME> -> XLSX Fns
-def get_cell(col, row):
-    alpha = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
-    col_alpha = alpha[col % len(alpha)]
-    # TODO: handle columns > Z
-    return f"{col_alpha}{row}"
+# write individual timesheet:
+# - SORT:
+#   - Top-level sort should be by Break Type (so they can be more easily ignored)
+# - COLS:
+#   - "Hours worked": translation of og Hours Worked/Worked Hours (?) to number format
+#   - "REG": Hours worked, minus UNPAID, minus OT
+#   - "OT": Empty
+#   - "SICK": Empty
+#   - "PTO": Empty
+#   - "HOLIDAY": Empty
+# - SUMS:
+#   - UNPAID/"Break Type": need SUM to subtract from Hours Worked for REG hours
+#   - All added cols need sums: Hours Worked, REG, OT, SICK, PTO, HOLIDAY
 
-
-def write_individual_timesheet(workbook, name, df):
+def write_individual_timesheet(workbook, name, raw_df):
     worksheet = workbook.create_sheet(name)
     worksheet[get_cell(0, 1)] = name
 
     # write contents of dataframe, including headers
-    for r in dataframe_to_rows(df, index=False, header=True):
+    for r in dataframe_to_rows(raw_df, index=False, header=True):
         worksheet.append(r)
 
     # add column headings for SICK, PTO, HOLIDAY
@@ -51,7 +64,7 @@ def write_individual_timesheet(workbook, name, df):
     worksheet[get_cell(5, 2)] = "HOLIDAY"
 
     # write formulae for totals under df
-    r = len(df.index) + 3
+    r = len(raw_df.index) + 3
     worksheet[get_cell(0, r)] = 'Totals:'
     totals_count = 4
     for x in range(totals_count):
