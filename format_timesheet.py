@@ -26,26 +26,30 @@ def get_grouped_dfs(input_file):
     df_raw = pd.read_csv(input_file)
 
     # split by employee and format xlsx fragment for each person
-    dfdict_group = {x: y.drop("Full Name", axis=1)
-                    for x, y in df_raw.groupby('Full Name')}
+    dfdict_group = {x: y for x, y in df_raw.groupby('Full Name')}
+
+    for df in dfdict_group.values():
+        df.reset_index(inplace=True)
+        print(df)
 
     return dfdict_group
 
 
 # * dict<DATAFRAME> -> XLSX Fns
 # write individual timesheet:
-# - SORT:
-#   - Top-level sort should be by Break Type (so they can be more easily ignored)
 # - COLS:
 #   - "Hours worked": translation of og Hours Worked/Worked Hours (?) to number format
-#   - "REG": Hours worked, minus UNPAID, minus OT
-#   - "OT": Empty
+#   - "UNPAID": Hours worked where UNPAID
 #   - "SICK": Empty
 #   - "PTO": Empty
 #   - "HOLIDAY": Empty
-# - SUMS:
-#   - UNPAID/"Break Type": need SUM to subtract from Hours Worked for REG hours
-#   - All added cols need sums: Hours Worked, REG, OT, SICK, PTO, HOLIDAY
+# - SINGLE CELL ENTRIES:
+#   - Overtime
+# - FORMULAS:
+#   - All added cols need SUMs: Hours Worked, OT, SICK, PTO, HOLIDAY
+#   - UNPAID/"Hours worked WHERE Break Type=='Unpaid'": SUM (needed to subtract from Hours Worked for REG hours)
+#   - REG: Hours worked, minus sum of UNPAID, and minus OT
+#   - TOTAL: Hours worked, minus UNPAID, plus SUM of sick, pto, holiday
 
 def get_truncated_df(df, upto_col):
     return df.loc[:, :upto_col]
@@ -54,6 +58,7 @@ def get_truncated_df(df, upto_col):
 def write_cell_rows(ws, row, col, vals):
     for i, val in enumerate(vals):
         ws[get_cell(col + i, row)] = val
+
 
 def add_col_sums(ws, df, col_names, row_start):
     c_len = len(df.index)
@@ -68,6 +73,14 @@ def add_col_sums(ws, df, col_names, row_start):
 
         ws[form_cell] = f"=SUM({start_cell}:{end_cell})"
     
+def set_unpaid(df):
+    df["UNPAID"] = np.nan
+    for i in range(len(df.index)):
+        unpaid = df.loc[i, "Break Type"]
+        unpaid_hrs = float(df.loc[i, "Hours incl break"]) if str(unpaid) == "Unpaid" else 0
+        print(unpaid, unpaid_hrs)
+        df.loc[i, ["UNPAID"]] =  unpaid_hrs if unpaid_hrs > 0 else 0
+
 
 def write_individual_timesheet(workbook, name, raw_df):
     worksheet = workbook.create_sheet(name)
@@ -76,10 +89,12 @@ def write_individual_timesheet(workbook, name, raw_df):
     # grab everything up to x column
     df = get_truncated_df(raw_df, "Break Type")
 
-    # add formatted timesheet column
+    # add formatted timesheet entries column
     df["Hours incl break"] = df['Hours Worked'].map(fmt_time)
 
-    fillin_cols = ["REG", "OT", "SICK", "PTO", "HOLIDAY"]
+    set_unpaid(df)
+
+    fillin_cols = ["SICK", "PTO", "HOLIDAY"]
 
     for col in fillin_cols:
         df[col] = np.nan
@@ -89,13 +104,16 @@ def write_individual_timesheet(workbook, name, raw_df):
         worksheet.append(r)
     
 
-    # write formulae for totals under df
     r = len(df.index) + 3
     worksheet[get_cell(0, r)] = 'Totals:'
-    
-    add_col_sums(worksheet, df, ["Hours incl break", *fillin_cols], 2)
 
+    add_col_sums(worksheet, df, ["Hours incl break", "UNPAID", *fillin_cols], 2)
+
+    # todo: add space for OT (& record cell)
+    # todo: add REG
     # todo: write "grand total" underneath other totals
+    
+    print(f"wrote {name}")
 
 
 def get_xlsx_from_df_group(df_group):
