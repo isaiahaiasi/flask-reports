@@ -1,4 +1,5 @@
 import re
+import numpy as np
 import pandas as pd
 from openpyxl import Workbook
 from openpyxl.utils.dataframe import dataframe_to_rows
@@ -20,13 +21,9 @@ def fmt_time(t_raw):
         return None
 
 
-# * CSV -> DATAFRAME fns
+# * CSV -> DATAFRAME
 def get_grouped_dfs(input_file):
     df_raw = pd.read_csv(input_file)
-
-    # strip unnecessary columns
-    # df_clean = df_raw.loc[:, 'Date':'Full Name']
-    # df_clean["Hours Worked"] = df_raw['Hours Worked'].map(fmt_time)
 
     # split by employee and format xlsx fragment for each person
     dfdict_group = {x: y.drop("Full Name", axis=1)
@@ -53,10 +50,24 @@ def get_grouped_dfs(input_file):
 def get_truncated_df(df, upto_col):
     return df.loc[:, :upto_col]
 
-def add_headers_to_worksheet(ws, row, col_offset, cols):
-    for i, col in enumerate(cols):
-        ws[get_cell(col_offset + i, row)] = col
 
+def write_cell_rows(ws, row, col, vals):
+    for i, val in enumerate(vals):
+        ws[get_cell(col + i, row)] = val
+
+def add_col_sums(ws, df, col_names, row_start):
+    c_len = len(df.index)
+
+    for col_name in col_names:
+        c_index = list(df.columns).index(col_name)
+        row_end = row_start + c_len
+
+        form_cell = get_cell(c_index, row_start + c_len + 1)
+        start_cell = get_cell(c_index, row_start)
+        end_cell = get_cell(c_index, row_end)
+
+        ws[form_cell] = f"=SUM({start_cell}:{end_cell})"
+    
 
 def write_individual_timesheet(workbook, name, raw_df):
     worksheet = workbook.create_sheet(name)
@@ -68,28 +79,23 @@ def write_individual_timesheet(workbook, name, raw_df):
     # add formatted timesheet column
     df["Hours incl break"] = df['Hours Worked'].map(fmt_time)
 
+    fillin_cols = ["REG", "OT", "SICK", "PTO", "HOLIDAY"]
+
+    for col in fillin_cols:
+        df[col] = np.nan
+
     # write contents of dataframe, including headers
     for r in dataframe_to_rows(df, index=False, header=True):
         worksheet.append(r)
-
-    add_headers_to_worksheet(worksheet, 2, len(df.columns), ["REG", "OT", "SICK", "PTO", "HOLIDAY"])
+    
 
     # write formulae for totals under df
     r = len(df.index) + 3
     worksheet[get_cell(0, r)] = 'Totals:'
-    totals_count = 4
-    for x in range(totals_count):
-        c = x + 2
-        sum_range_start = get_cell(c, 3)
-        sum_range_end = get_cell(c, r - 1)
-        worksheet[get_cell(c, r)] = f"=SUM({sum_range_start}:{sum_range_end})"
+    
+    add_col_sums(worksheet, df, ["Hours incl break", *fillin_cols], 2)
 
-    # write "grand total" underneath other totals
-    r = r + 1
-    worksheet[get_cell(0, r)] = "Grand total:"
-    totals_start = get_cell(2, r - 1)
-    totals_end = get_cell(2 + totals_count - 1, r - 1)
-    worksheet[get_cell(2, r)] = f"=SUM({totals_start}:{totals_end})"
+    # todo: write "grand total" underneath other totals
 
 
 def get_xlsx_from_df_group(df_group):
