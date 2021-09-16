@@ -25,12 +25,12 @@ def get_grouped_dfs(input_file):
     df_raw = pd.read_csv(input_file)
 
     # strip unnecessary columns
-    df_clean = df_raw.loc[:, 'Date':'Full Name']
-    df_clean["Hours Worked"] = df_raw['Hours Worked'].map(fmt_time)
+    # df_clean = df_raw.loc[:, 'Date':'Full Name']
+    # df_clean["Hours Worked"] = df_raw['Hours Worked'].map(fmt_time)
 
     # split by employee and format xlsx fragment for each person
     dfdict_group = {x: y.drop("Full Name", axis=1)
-                    for x, y in df_clean.groupby('Full Name')}
+                    for x, y in df_raw.groupby('Full Name')}
 
     return dfdict_group
 
@@ -50,21 +50,30 @@ def get_grouped_dfs(input_file):
 #   - UNPAID/"Break Type": need SUM to subtract from Hours Worked for REG hours
 #   - All added cols need sums: Hours Worked, REG, OT, SICK, PTO, HOLIDAY
 
+def get_truncated_df(df, upto_col):
+    return df.loc[:, :upto_col]
+
+def add_headers_to_worksheet(ws, row, col_offset, cols):
+    for i, col in enumerate(cols):
+        ws[get_cell(col_offset + i, row)] = col
+
+
 def write_individual_timesheet(workbook, name, raw_df):
     worksheet = workbook.create_sheet(name)
-    worksheet[get_cell(0, 1)] = name
+    worksheet[get_cell(0, 1)] = name # First row is just employee name
+
+    df = get_truncated_df(raw_df, "Hours Worked") # grabs everything though Hours Worked
 
     # write contents of dataframe, including headers
-    for r in dataframe_to_rows(raw_df, index=False, header=True):
+    for r in dataframe_to_rows(df, index=False, header=True):
         worksheet.append(r)
 
-    # add column headings for SICK, PTO, HOLIDAY
-    worksheet[get_cell(3, 2)] = "SICK"
-    worksheet[get_cell(4, 2)] = "PTO"
-    worksheet[get_cell(5, 2)] = "HOLIDAY"
+    # TODO: add formatted hrs worked
+    
+    add_headers_to_worksheet(worksheet, 2, len(df.columns), ["REG", "OT", "SICK", "PTO", "HOLIDAY"])
 
     # write formulae for totals under df
-    r = len(raw_df.index) + 3
+    r = len(df.index) + 3
     worksheet[get_cell(0, r)] = 'Totals:'
     totals_count = 4
     for x in range(totals_count):
