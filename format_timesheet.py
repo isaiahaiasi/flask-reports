@@ -5,18 +5,22 @@ from openpyxl import Workbook
 from openpyxl.utils.dataframe import dataframe_to_rows
 
 # * Helpers
+# todo: replace w builtin openpyxl function
+
+
 def get_cell(col, row):
     alpha = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
     col_alpha = alpha[col % len(alpha)]
     # TODO: handle columns > Z
     return f"{col_alpha}{row}"
 
+
 def fmt_time(t_raw):
     try:
-        numeric_str = re.sub(r'h|m', '', t_raw)     # '3h 15m' -> '3 15'
-        str_h, str_m = numeric_str.split(" ")       # '3 15' -> ('3', '15')
-        h, m = float(str_h), float(str_m)           # ('3', '15') -> (3.0, 15.0)
-        return ((h * 60) + m)/60                    # (3.0, 15.0) -> 3.25
+        numeric_str = re.sub(r'h|m', '', t_raw) # '3h 15m' -> '3 15'
+        str_h, str_m = numeric_str.split(" ")   # '3 15' -> ('3', '15')
+        h, m = float(str_h), float(str_m)       # ('3', '15') -> (3.0, 15.0)
+        return ((h * 60) + m)/60                # (3.0, 15.0) -> 3.25
     except:
         return None
 
@@ -72,19 +76,21 @@ def add_col_sums(ws, df, col_names, row_start):
         end_cell = get_cell(c_index, row_end)
 
         ws[form_cell] = f"=SUM({start_cell}:{end_cell})"
-    
+
+
 def set_unpaid(df):
     df["UNPAID"] = np.nan
     for i in range(len(df.index)):
         unpaid = df.loc[i, "Break Type"]
-        unpaid_hrs = float(df.loc[i, "Hours incl break"]) if str(unpaid) == "Unpaid" else 0
-        print(unpaid, unpaid_hrs)
-        df.loc[i, ["UNPAID"]] =  unpaid_hrs if unpaid_hrs > 0 else 0
+        hrs_worked = float(df.loc[i, "Hours incl break"])
+        unpaid_hrs = hrs_worked if str(unpaid) == "Unpaid" else 0
+
+        df.loc[i, ["UNPAID"]] = unpaid_hrs if unpaid_hrs > 0 else 0
 
 
 def write_individual_timesheet(workbook, name, raw_df):
     worksheet = workbook.create_sheet(name)
-    worksheet[get_cell(0, 1)] = name # First row is just employee name
+    worksheet[get_cell(0, 1)] = name  # First row is just employee name
 
     # grab everything up to x column
     df = get_truncated_df(raw_df, "Break Type")
@@ -102,17 +108,18 @@ def write_individual_timesheet(workbook, name, raw_df):
     # write contents of dataframe, including headers
     for r in dataframe_to_rows(df, index=False, header=True):
         worksheet.append(r)
-    
 
     r = len(df.index) + 3
     worksheet[get_cell(0, r)] = 'Totals:'
 
-    add_col_sums(worksheet, df, ["Hours incl break", "UNPAID", *fillin_cols], 2)
+    sum_cols = ["Hours incl break", "UNPAID", *fillin_cols]
+
+    add_col_sums(worksheet, df, sum_cols, 2)
 
     # todo: add space for OT (& record cell)
     # todo: add REG
     # todo: write "grand total" underneath other totals
-    
+
     print(f"wrote {name}")
 
 
