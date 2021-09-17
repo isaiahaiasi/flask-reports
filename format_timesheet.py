@@ -106,17 +106,22 @@ def write_individual_timesheet(workbook, name, raw_df):
         df[col] = np.nan
 
     # write contents of dataframe, including headers
-    for r in dataframe_to_rows(df, index=False, header=True):
-        worksheet.append(r)
+    for r_offset in dataframe_to_rows(df, index=False, header=True):
+        worksheet.append(r_offset)
 
-    r = len(df.index) + 3
-    worksheet[get_cell(0, r)] = 'Totals:'
+    r_offset = len(df.index) + 3
+    worksheet[get_cell(0, r_offset)] = 'Totals:'
 
     sum_cols = ["Hours incl break", "UNPAID", *fillin_cols]
 
     add_col_sums(worksheet, df, sum_cols, 2)
 
+    r_offset = r_offset + 1
+    c_offset = 3
     # todo: add space for OT (& record cell)
+    cell = worksheet.cell(c_offset, r_offset)
+    cell.value = "Overtime:"
+    ot_cell = get_cell(c_offset + 1, r_offset)
     # todo: add REG
     # todo: write "grand total" underneath other totals
 
