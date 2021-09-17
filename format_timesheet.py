@@ -129,10 +129,17 @@ def write_individual_timesheet(workbook, name, raw_df):
 
     # REG
     hrs_sum_cell, unpaid_sum_cell = sum_cells['Hours incl break'], sum_cells['UNPAID']
+    reg_cell = get_cell(c_offset + 1, r_offset)
     worksheet[get_cell(c_offset, r_offset)] = "REG:"
-    worksheet[get_cell(c_offset + 1, r_offset)] = f"={hrs_sum_cell}-{unpaid_sum_cell}-{ot_cell}"
+    worksheet[reg_cell] = f"={hrs_sum_cell}-{unpaid_sum_cell}-{ot_cell}"
+
+    r_offset = r_offset + 1
 
     # todo: write "grand total" underneath other totals
+    sick_sum_c, pto_sum_c, hol_sum_c  = sum_cells["SICK"], sum_cells["PTO"], sum_cells["HOLIDAY"]
+    worksheet[get_cell(c_offset, r_offset)] = "TOTAL HRS:"
+    tot_form =  f"={reg_cell} + {ot_cell} + {sick_sum_c} + {pto_sum_c} + {hol_sum_c}"
+    worksheet[get_cell(c_offset + 1, r_offset)] = tot_form
 
     print(f"wrote {name}")
 
