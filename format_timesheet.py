@@ -4,10 +4,9 @@ import pandas as pd
 from openpyxl import Workbook
 from openpyxl.utils.dataframe import dataframe_to_rows
 
+
 # * Helpers
 # todo: replace w builtin openpyxl function
-
-
 def get_cell(col, row):
     alpha = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
     col_alpha = alpha[col % len(alpha)]
@@ -33,8 +32,7 @@ def get_grouped_dfs(input_file):
     dfdict_group = {x: y for x, y in df_raw.groupby('Full Name')}
 
     for df in dfdict_group.values():
-        df.reset_index(inplace=True)
-        print(df)
+        df.reset_index(inplace=True, drop=True)
 
     return dfdict_group
 
@@ -65,6 +63,7 @@ def write_cell_rows(ws, row, col, vals):
 
 
 def add_col_sums(ws, df, col_names, row_start):
+    sum_cells = {}
     c_len = len(df.index)
 
     for col_name in col_names:
@@ -76,6 +75,9 @@ def add_col_sums(ws, df, col_names, row_start):
         end_cell = get_cell(c_index, row_end)
 
         ws[form_cell] = f"=SUM({start_cell}:{end_cell})"
+        sum_cells[col_name] = form_cell
+
+    return sum_cells
 
 
 def set_unpaid(df):
@@ -114,15 +116,22 @@ def write_individual_timesheet(workbook, name, raw_df):
 
     sum_cols = ["Hours incl break", "UNPAID", *fillin_cols]
 
-    add_col_sums(worksheet, df, sum_cols, 2)
+    sum_cells = add_col_sums(worksheet, df, sum_cols, 2)
 
     r_offset = r_offset + 1
-    c_offset = 3
-    # todo: add space for OT (& record cell)
-    cell = worksheet.cell(c_offset, r_offset)
-    cell.value = "Overtime:"
+    c_offset = list(df.columns).index("Hours incl break") - 1
+
+    # overtime
+    worksheet[get_cell(c_offset, r_offset)] = "Overtime:"
     ot_cell = get_cell(c_offset + 1, r_offset)
-    # todo: add REG
+
+    r_offset = r_offset + 1
+
+    # REG
+    hrs_sum_cell, unpaid_sum_cell = sum_cells['Hours incl break'], sum_cells['UNPAID']
+    worksheet[get_cell(c_offset, r_offset)] = "REG:"
+    worksheet[get_cell(c_offset + 1, r_offset)] = f"={hrs_sum_cell}-{unpaid_sum_cell}-{ot_cell}"
+
     # todo: write "grand total" underneath other totals
 
     print(f"wrote {name}")
