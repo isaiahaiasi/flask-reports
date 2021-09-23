@@ -36,6 +36,9 @@ def get_grouped_dfs(input_file):
 
     return dfdict_group
 
+def get_col_index(df, col_name):
+    return list(df.columns).index(col_name)
+
 
 # * dict<DATAFRAME> -> XLSX Fns
 # write individual timesheet:
@@ -67,7 +70,7 @@ def add_col_sums(ws, df, col_names, row_start):
     c_len = len(df.index)
 
     for col_name in col_names:
-        c_index = list(df.columns).index(col_name)
+        c_index = get_col_index(df, col_name)
         row_end = row_start + c_len
 
         form_cell = get_cell(c_index, row_start + c_len + 1)
@@ -84,10 +87,14 @@ def set_unpaid(df):
     df["UNPAID"] = np.nan
     for i in range(len(df.index)):
         unpaid = df.loc[i, "Break Type"]
-        hrs_worked = float(df.loc[i, "Hours incl break"])
-        unpaid_hrs = hrs_worked if str(unpaid) == "Unpaid" else 0
-
-        df.loc[i, ["UNPAID"]] = unpaid_hrs if unpaid_hrs > 0 else 0
+        # hrs_worked = float(df.loc[i, "Hours incl break"])
+        # unpaid_hrs = hrs_worked if str(unpaid) == "Unpaid" else 0
+        # cell_val = unpaid_hrs if unpaid_hrs > 0 else 0
+        row_offset = 3
+        break_type_cell = get_cell(get_col_index(df, "Break Type"), i + row_offset)
+        hrs_worked_cell = get_cell(get_col_index(df, "Hours incl break"), i + row_offset)
+        form = f"=IF({break_type_cell}='Unpaid',{hrs_worked_cell},0)"
+        df.loc[i, ["UNPAID"]] = form
 
 
 def write_individual_timesheet(workbook, name, raw_df):
