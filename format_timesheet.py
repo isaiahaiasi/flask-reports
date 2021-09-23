@@ -93,7 +93,7 @@ def set_unpaid(df):
         row_offset = 3
         break_type_cell = get_cell(get_col_index(df, "Break Type"), i + row_offset)
         hrs_worked_cell = get_cell(get_col_index(df, "Hours incl break"), i + row_offset)
-        form = f"=IF({break_type_cell}='Unpaid',{hrs_worked_cell},0)"
+        form = f"=IF({break_type_cell}=\"Unpaid\",{hrs_worked_cell},0)"
         df.loc[i, ["UNPAID"]] = form
 
 
