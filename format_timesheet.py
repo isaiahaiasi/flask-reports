@@ -98,7 +98,7 @@ def write_individual_timesheet(workbook, name, raw_df):
     df = get_truncated_df(raw_df, "Break Type")
 
     # add formatted timesheet entries column
-    df["Hours incl break"] = df['Hours Worked'].map(fmt_time)
+    df["Hours incl break"] = df['Duration'].map(fmt_time)
 
     set_unpaid(df)
 
