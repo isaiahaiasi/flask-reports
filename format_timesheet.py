@@ -3,9 +3,11 @@ import numpy as np
 import pandas as pd
 from openpyxl import Workbook
 from openpyxl.utils.dataframe import dataframe_to_rows
-
+from employee_ids import eeids
 
 # * Helpers
+
+
 # todo: replace w builtin openpyxl function
 def get_cell(col, row):
     alpha = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
@@ -16,7 +18,7 @@ def get_cell(col, row):
 
 def fmt_time(t_raw):
     try:
-        numeric_str = re.sub(r'h|m', '', t_raw) # '3h 15m' -> '3 15'
+        numeric_str = re.sub(r'h|m', '', t_raw)  # '3h 15m' -> '3 15'
         str_h, str_m = numeric_str.split(" ")   # '3 15' -> ('3', '15')
         h, m = float(str_h), float(str_m)       # ('3', '15') -> (3.0, 15.0)
         return ((h * 60) + m)/60                # (3.0, 15.0) -> 3.25
@@ -35,6 +37,7 @@ def get_grouped_dfs(input_file):
         df.reset_index(inplace=True, drop=True)
 
     return dfdict_group
+
 
 def get_col_index(df, col_name):
     return list(df.columns).index(col_name)
@@ -91,8 +94,10 @@ def set_unpaid(df):
         # unpaid_hrs = hrs_worked if str(unpaid) == "Unpaid" else 0
         # cell_val = unpaid_hrs if unpaid_hrs > 0 else 0
         row_offset = 3
-        break_type_cell = get_cell(get_col_index(df, "Break Type"), i + row_offset)
-        hrs_worked_cell = get_cell(get_col_index(df, "Hours incl break"), i + row_offset)
+        break_type_cell = get_cell(get_col_index(
+            df, "Break Type"), i + row_offset)
+        hrs_worked_cell = get_cell(get_col_index(
+            df, "Hours incl break"), i + row_offset)
         form = f"=IF({break_type_cell}=\"Unpaid\",{hrs_worked_cell},0)"
         df.loc[i, ["UNPAID"]] = form
 
@@ -100,6 +105,7 @@ def set_unpaid(df):
 def write_individual_timesheet(workbook, name, raw_df):
     worksheet = workbook.create_sheet(name)
     worksheet[get_cell(0, 1)] = name  # First row is just employee name
+    worksheet[get_cell(1, 1)] = eeids[name]
 
     # grab everything up to x column
     df = get_truncated_df(raw_df, "Break Type")
@@ -143,9 +149,9 @@ def write_individual_timesheet(workbook, name, raw_df):
     r_offset = r_offset + 1
 
     # todo: write "grand total" underneath other totals
-    sick_sum_c, pto_sum_c, hol_sum_c  = sum_cells["SICK"], sum_cells["PTO"], sum_cells["HOLIDAY"]
+    sick_sum_c, pto_sum_c, hol_sum_c = sum_cells["SICK"], sum_cells["PTO"], sum_cells["HOLIDAY"]
     worksheet[get_cell(c_offset, r_offset)] = "TOTAL HRS:"
-    tot_form =  f"={reg_cell} + {ot_cell} + {sick_sum_c} + {pto_sum_c} + {hol_sum_c}"
+    tot_form = f"={reg_cell} + {ot_cell} + {sick_sum_c} + {pto_sum_c} + {hol_sum_c}"
     worksheet[get_cell(c_offset + 1, r_offset)] = tot_form
 
     print(f"wrote {name}")
